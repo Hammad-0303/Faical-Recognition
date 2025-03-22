@@ -22,45 +22,29 @@ class LFWDataset(Dataset):
         self.root_dir = root_dir
         self.split = split
         self.transform = transform
-        self.all_images = []  #Stores all images in the dataset
-        self.all_identities = {}   #Stores all identities of form {identity: [image1, image2, ...]} even if there is 1 image per person
-        self.valid_identities = {}  #Stores all identities with more than 1 image of form {identity: [image1, image2, ...]}
-        all_people = []
-        person_images = {}      
-        for person in os.listdir(root_dir):
-            person_dir = os.path.join(root_dir, person)
-            if os.path.isdir(person_dir):
-                images = [os.path.join(person_dir, img) for img in os.listdir(person_dir) if img.endswith('.jpg')]
-                if images: #If there are images in the directory
-                    all_people.append(person)
-                    person_images[person] = images
-
-
+        #Collect all idenitites with images and store them in a dictionary
+        person_images = {person : [os.path.join(root_dir, person, img) for img in os.listdir(os.path.join(root_dir,person)) if img.endswith('.jpg')]
+                         for person in os.listdir(root_dir) 
+                         if os.path.isdir(os.path.join(root_dir,person)) and os.listdir(os.path.join(root_dir,person))}
+        
+        #List of all the people
+        all_people = list(person_images.keys())
+        # Shuffle and split dataset (80% train, 10% val, 10% test)
         random.shuffle(all_people)
-        total_people = len(all_people) #Total number of people in the dataset
-        train_people = all_people[:int(0.8*total_people)] #80% of people in training set
-        valid_people = all_people[int(0.8*total_people):int(0.9*total_people)] #10% of people in validation set
-        test_people = all_people[int(0.9*total_people):] #10% of people in test set
+        total_people = len(all_people)
+        split_dict = {'train': all_people[:int(0.8*total_people)],
+                      'val': all_people[int(0.8*total_people):int(0.9*total_people)],
+                      'test': all_people[int(0.9*total_people):]}
+        
+        #Select the split
+        self.all_identities = {person : person_images[person] for person in split_dict[split]}
+        self.valid_identities = {person : person_images[person] for person in split_dict[split] if len(person_images[person])>1}
 
-        if split == 'train':
-            selected_people = train_people
-        elif split == 'val':
-            selected_people = valid_people
-        elif split == 'test':
-            selected_people = test_people
-        
-        for person in selected_people:
-            images = person_images[person]
-            self.all_images.extend(images)
-            self.all_identities[person] = images
-            if len(images) > 1:
-                self.valid_identities[person] = images
-        
-        #Calculting the number of anchor postitive pairs
+        #Number of pairs
         self.num_pairs = sum((len(images)*(len(images)-1))//2 for images in self.valid_identities.values())
 
-        #Deleting unused variables
-        del all_people, person_images, train_people, test_people, valid_people
+        #Free memory
+        del person_images, all_people, split_dict
         gc.collect()
     
     def __len__(self):
