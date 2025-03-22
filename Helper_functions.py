@@ -14,7 +14,7 @@ class LFWDataset(Dataset):
         #root_dir: Path to LFW dataset
         #split: 'train', 'val', or 'test'
         #transform: Image transformation
-        random.seed = 42 #For reproducibility
+        random.seed(42) #For reproducibility
         torch.manual_seed(42) #For reproducibility
         self.root_dir = root_dir
         self.split = split
@@ -23,7 +23,7 @@ class LFWDataset(Dataset):
         self.all_identities = {}   #Stores all identities of form {identity: [image1, image2, ...]} even if there is 1 image per person
         self.valid_identities = {}  #Stores all identities with more than 1 image of form {identity: [image1, image2, ...]}
         all_people = []
-        person_images = {}
+        person_images = {}      
         for person in os.listdir(root_dir):
             person_dir = os.path.join(root_dir, person)
             if os.path.isdir(person_dir):
@@ -34,25 +34,16 @@ class LFWDataset(Dataset):
 
 
         random.shuffle(all_people)
-        total_images = sum(len(imgs) for imgs in person_images.values())    
-        train_people, test_people, valid_people = [], [], []
-        train_count, test_count, valid_count = 0, 0, 0
-        for person in all_people:
-            if (train_count/total_images) < 0.8:
-                train_people.append(person)
-                train_count += len(person_images[person])
-            elif (valid_count/total_images) < 0.9:
-                valid_people.append(person)
-                valid_count += len(person_images[person])
-            else:
-                test_people.append(person)
-                test_count += len(person_images[person])
-        
+        total_people = len(all_people) #Total number of people in the dataset
+        train_people = all_people[:int(0.8*total_people)] #80% of people in training set
+        valid_people = all_people[int(0.8*total_people):int(0.9*total_people)] #10% of people in validation set
+        test_people = all_people[int(0.9*total_people):] #10% of people in test set
+
         if split == 'train':
             selected_people = train_people
         elif split == 'val':
             selected_people = valid_people
-        else:
+        elif split == 'test':
             selected_people = test_people
         
         for person in selected_people:
@@ -70,7 +61,7 @@ class LFWDataset(Dataset):
         gc.collect()
     
     def __len__(self):
-        return max(1000,3*(self.num_pairs)) #Ensuring that the number of triplets is at least 1000
+        return min(150000, max(1000,3*(self.num_pairs))) #Ensuring that the number of triplets is at least 1000
     
     def __getitem__(self, idx):
         #Randomly select a person from anchor and positive pairs
@@ -94,6 +85,7 @@ class LFWDataset(Dataset):
             negative = self.transform(negative)
 
         return anchor, positive, negative
+
 
 
 
