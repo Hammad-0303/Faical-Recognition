@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import gc
 
+#Checking the shape of the images
 #Test LFWDataset
 root_dir = 'Data/lfw-deepfunneled/lfw-deepfunneled'
 transform = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(), transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])])
@@ -27,7 +28,7 @@ for batch_idx, (anchors, positives, negatives) in enumerate(train_loader):
     if batch_idx == 2:
         break
 
-
+# Plotting few triplets pairs for visualization
 # Define the inverse normalization transform
 inv_normalize = transforms.Compose([
     transforms.Normalize(mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225], std=[1 / 0.229, 1 / 0.224, 1 / 0.225])])
@@ -62,4 +63,50 @@ for i in range(6):
 
 plt.tight_layout()
 plt.show()
+
+#Testing the number of anchor positive pairs and the if the split intersects or not
+# Load all three datasets
+root_dir = 'Data/lfw-deepfunneled/lfw-deepfunneled'
+train_dataset = LFWDataset(root_dir, split='train')
+val_dataset = LFWDataset(root_dir, split='val')
+test_dataset = LFWDataset(root_dir, split='test')
+    
+# Get the set of people in each split
+train_people = set(train_dataset.all_identities.keys())
+val_people = set(val_dataset.all_identities.keys())
+test_people = set(test_dataset.all_identities.keys())
+
+# Get the list of people with more than 2 picture for each split
+train_validpeople = set(train_dataset.valid_identities.keys())
+val_validpeople = set(val_dataset.valid_identities.keys())
+test_validpeople = set(test_dataset.valid_identities.keys())
+    
+# Check intersections
+train_val_overlap = train_people.intersection(val_people)
+train_test_overlap = train_people.intersection(test_people)
+val_test_overlap = val_people.intersection(test_people)
+    
+# Output results
+print(f"Train set: {len(train_people)} people")
+print(f"Validation set: {len(val_people)} people")
+print(f"Test set: {len(test_people)} people")
+
+print(f"Train set: {len(train_validpeople)} people with more than 2 pictures")
+print(f"Validation set: {len(val_validpeople)} people with more than 2 pictures")
+print(f"Test set: {len(test_validpeople)} people with more than 2 pictures")
+    
+print(f"Train-Val overlap: {len(train_val_overlap)} people")
+print(f"Train-Test overlap: {len(train_test_overlap)} people")
+print(f"Val-Test overlap: {len(val_test_overlap)} people")
+    
+if len(train_val_overlap) == 0 and len(train_test_overlap) == 0 and len(val_test_overlap) == 0:
+    print("Verification PASSED: No person appears in multiple sets!")
+else:
+    print("Verification FAILED: Some people appear in multiple sets.")
+    if train_val_overlap:
+        print(f"People in both train and validation: {train_val_overlap}")
+    if train_test_overlap:
+        print(f"People in both train and test: {train_test_overlap}")
+    if val_test_overlap:
+        print(f"People in both validation and test: {val_test_overlap}")
 
